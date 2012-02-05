@@ -130,10 +130,17 @@ function zipcode_get_results ($zipcode) {
     $count = $count + 1;
   }
   // drupal_set_message('<pre>' . print_r($thepeople, TRUE) . '</pre>');
-  drupal_get_messages('status');
+  $content .= '<table id="datatable1">
+  <thead>
+        <tr>
+            <th>Column 1</th>
+            <th>Column 2</th>
+        </tr>
+    </thead><tbody>';
   foreach ($thepeople as $person) {
-    drupal_set_message($person['name'] . ' ' . $person['zip']);
+    $content .= '<tr><td>' . $person['name'] . '</td><td>' . $person['zip'] . '</td></tr>';
   }
+  $content .= '</tbody></table>';
   // drupal_set_message('<pre>' . print_r($thepeople, TRUE) . '</pre>');
   if ($path = libraries_get_path('DataTables')) {
     drupal_add_js(drupal_get_path('module', 'zipcode_search') . '/zipcode_search.js');
