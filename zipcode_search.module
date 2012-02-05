@@ -1,0 +1,144 @@
+<?php
+/**
+ * @file
+ * Module to implement zipcode proximity search.
+ *
+ * Module developed by James Barnett 2012 for thingsincommon website to
+ * implement zipcode proxity searches to connect folks who live
+ * near each other with "things in common"
+ */
+
+include 'PHP-ZipCode-Class/zipcode.php';
+
+/**
+ * Implements hook_menu().
+ */
+function zipcode_search_menu() {
+  $items = array();
+  $items['zipcode-search'] = array(
+    'title' => 'Zip code search page',
+    'page callback'=>'drupal_get_form',
+    'page arguments'=>array('zipcode_search_page_form'),
+    'access arguments' => array('access content'),
+  );
+  return $items;
+}
+
+function zipcode_search_page() {
+  global $user;
+  $user_fields = user_load($user->uid);
+  // drupal_set_message('<pre>' . print_r($user_fields, TRUE) . '</pre>');
+  $content = '';
+  $content .= drupal_render(drupal_get_form('zipcode_search_page_form'));
+  $results = '';
+  if ($_SESSION['myvalue']) {
+    drupal_set_message('session myvalue is ' . $_SESSION['myvalue']);
+    $results = zipcode_get_results($_SESSION['myvalue']);
+  }
+  // $results = 'hello';
+  $content .= '<br /> HELLO ' . $results;
+  return $content;
+}
+
+/**
+ * Implements hook_form().
+ */
+function zipcode_search_page_form($form, &$form_state) {
+  $form['your_zipcode'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Enter your zipcode'),
+    '#default_value' => '',
+    '#size' => 30,
+    '#maxlength' => 128,
+    '#required' => TRUE,
+  );
+  if (isset($_SESSION['myvalue'])) {
+    $form_state['storage']['myvalue'] = $_SESSION['myvalue'];
+    if ($path = libraries_get_path('DataTables')) {
+      drupal_add_js(drupal_get_path('module', 'zipcode_search') . '/zipcode_search.js');
+      drupal_add_js($path . '/media/js/jquery.dataTables.min.js');
+      drupal_add_css($path . '/media/css/demo_table.css');
+      drupal_add_css(drupal_get_path('module', 'zipcode_search') . '/zipcode_search.css');
+    }
+  }
+  $content = '';
+  if (!empty($form_state['storage']['myvalue'])) {
+    // Display a message with the submitted value.
+    $content = t("<br /><br />Your results near: <br /> " . $form_state['storage']['myvalue']);
+    $content .= zipcode_get_results($_SESSION['myvalue']);
+  }
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+    '#suffix' => $content,
+  );
+
+  return $form;
+}
+
+/**
+ * Implements hook_form_validate().
+ */
+function zipcode_search_page_form_validate($form, &$form_state) {
+  $thezip = $form_state['values']['your_zipcode'];
+  $sql = 'SELECT zip_code from zip_code where zip_code = :yourzip';
+  $results = db_query($sql, array('yourzip' => $thezip));
+  $aresult = '';
+  foreach ($results as $result) {
+    $aresult = $result->zip_code;
+  }
+  if (!$aresult) {
+    form_error($form, t('you must pick a valid U.S. zipcode'));
+  }
+}
+
+/**
+ * Implements hook_form_submit().
+ */
+function zipcode_search_page_form_submit($form, &$form_state) {
+  $form_state['rebuild'] = TRUE;
+  $_SESSION['myvalue'] = $form_state['values']['your_zipcode'];
+  $form_state['storage']['myvalue'] = $form_state['values']['your_zipcode'];
+}
+
+function zipcode_get_results ($zipcode) {
+  mysql_connect('localhost:8889', 'root', 'root');
+  mysql_select_db('matching7');
+  $count = 1;
+  $thezip = $zipcode;
+  $framingham = new ZipCode($thezip);
+  $content = "";
+  $thezips = array();
+  foreach ($framingham->getZipsInRange(0, 5) as $miles => $zip) {
+    $miles = round($miles, 1);
+    $zip_results = "Zip code <strong>$zip </strong> is <strong>$miles</strong> miles away from "
+    . " <strong>$framingham</strong><br/>";
+    $content .= $zip_results;
+    // $thezips[] = "'" . $zip . "'";
+    $thezips[] = $zip;
+  }
+  // $thezips[] = "'" . $zipcode . "'";
+  $thezips[] = $zipcode;
+  $people_sql = 'SELECT DISTINCT u.name as name, z.field_zipcode_value as zip from {users} u,
+        {field_data_field_zipcode} z where z.entity_id = u.uid and z.field_zipcode_value IN (:zips)';
+  $people_results = db_query($people_sql, array(':zips' => $thezips));
+  $thepeople = array();
+  foreach ($people_results as $row) {
+    // drupal_set_message('<pre>' . print_r($row, TRUE) . '</pre>');
+    $thepeople[$count]['name'] = $row->name;
+    $thepeople[$count]['zip'] = $row->zip;
+    $count = $count + 1;
+  }
+  // drupal_set_message('<pre>' . print_r($thepeople, TRUE) . '</pre>');
+  drupal_get_messages('status');
+  foreach ($thepeople as $person) {
+    drupal_set_message($person['name'] . ' ' . $person['zip']);
+  }
+  // drupal_set_message('<pre>' . print_r($thepeople, TRUE) . '</pre>');
+  if ($path = libraries_get_path('DataTables')) {
+    drupal_add_js(drupal_get_path('module', 'zipcode_search') . '/zipcode_search.js');
+    drupal_add_js($path . '/media/js/jquery.dataTables.min.js');
+    drupal_add_css($path . '/media/css/demo_table.css');
+  }
+  return $content;
+}

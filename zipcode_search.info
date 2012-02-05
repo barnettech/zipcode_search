@@ -1,0 +1,6 @@
+name = Zipcode Search Page Module 
+description = provides a page to search by user's zipcodes
+core = 7.x
+package = Barnettech Development
+files[] = zipcode_search.module
+dependencies[] = libraries

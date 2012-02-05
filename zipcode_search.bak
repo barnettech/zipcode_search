@@ -1,0 +1,63 @@
+<?php
+// $Id$
+/**
+ * Implementation of hook_menu() .
+ */
+function zipcode_search_menu() {
+  $items = array();
+  $items['zipcode-search'] = array(
+    'title' => 'Things in Common Search Page',
+    'page callback' => 'zipcode_search_page',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+
+function zipcode_search_page() {
+  $header = array(
+        array('data' => t('First Name'), 'field' => 'field_firstname_value', 'sort' => 'asc'),
+        array('data' => t('Last Name'), 'field' => 'field_lastname_value', 'sort' => 'asc'),
+  );
+  
+  $rows = array();
+  $noyes = array('No', 'Yes');
+
+  $select = db_select('field_data_field_firstname', 'a');
+  $select->fields('a', array('field_firstname_value'));
+  $select->join('field_data_field_lastname', 'b', 'a.entity_id = b.entity_id');
+  $select->fields('b', array('field_lastname_value'));
+  $select->extend('TableSort');
+  $results = $select->execute();
+
+  foreach ($results as $row) {
+    $rows[] = array(
+      'data' => array(
+        $row->field_firstname_value,
+        $row->field_lastname_value,
+      )
+      );
+   }
+  $html = theme('table',
+            array(
+                'header' => $header,
+                'rows'=>$rows,
+                'caption' => 'Creating Drupal 7 style tables',   //Optional Caption for the table
+                'sticky' => TRUE,                        //Optional to indicate whether the table headers should be sticky
+                'empty' => 'No nodes created...',        //Optional empty text for the table if resultset is empty
+            )
+        );
+   $html .= theme('pager',
+            array(
+                'tags' => array()
+            )
+        );
+    
+   
+  return $html;
+ 
+   
+}
+
+
