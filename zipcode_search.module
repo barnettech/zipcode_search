@@ -24,10 +24,13 @@ function zipcode_search_menu() {
   return $items;
 }
 
+/**
+ * Implements an old function I'm no longer using and don't care to remove
+ * an alternative way of calling the form.
+ */
 function zipcode_search_page() {
   global $user;
   $user_fields = user_load($user->uid);
-  // drupal_set_message('<pre>' . print_r($user_fields, TRUE) . '</pre>');
   $content = '';
   $content .= drupal_render(drupal_get_form('zipcode_search_page_form'));
   $results = '';
@@ -35,7 +38,6 @@ function zipcode_search_page() {
     drupal_set_message('session myvalue is ' . $_SESSION['myvalue']);
     $results = zipcode_get_results($_SESSION['myvalue']);
   }
-  // $results = 'hello';
   $content .= '<br /> HELLO ' . $results;
   return $content;
 }
@@ -44,10 +46,30 @@ function zipcode_search_page() {
  * Implements hook_form().
  */
 function zipcode_search_page_form($form, &$form_state) {
+  if (isset($_SESSION['proximity'])) {
+    $proximity = $_SESSION['proximity'];
+  }
+  else {
+    $proximity = '';
+  }
+  if (isset($_SESSION['myvalue'])) {
+    $zipcode_searched = $_SESSION['myvalue'];
+  }
+  else {
+    $zipcode_searched = '';
+  }
   $form['your_zipcode'] = array(
     '#type' => 'textfield',
     '#title' => t('Enter your zipcode'),
-    '#default_value' => '',
+    '#default_value' => $zipcode_searched,
+    '#size' => 30,
+    '#maxlength' => 128,
+    '#required' => TRUE,
+  );
+  $form['proximity'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Enter how far away in miles you want to find like minded people'),
+    '#default_value' => $proximity,
     '#size' => 30,
     '#maxlength' => 128,
     '#required' => TRUE,
@@ -62,10 +84,10 @@ function zipcode_search_page_form($form, &$form_state) {
     }
   }
   $content = '';
-  if (!empty($form_state['storage']['myvalue'])) {
+  if (!empty($_SESSION['myvalue']) && !empty($_SESSION['proximity'])) {
     // Display a message with the submitted value.
     $content = t("<br /><br />Your results near: <br /> " . $form_state['storage']['myvalue']);
-    $content .= zipcode_get_results($_SESSION['myvalue']);
+    $content .= zipcode_get_results($_SESSION['myvalue'], $_SESSION['proximity']);
   }
   $form['submit'] = array(
     '#type' => 'submit',
@@ -90,6 +112,9 @@ function zipcode_search_page_form_validate($form, &$form_state) {
   if (!$aresult) {
     form_error($form, t('you must pick a valid U.S. zipcode'));
   }
+  if (!is_numeric($form_state['values']['proximity'])) {
+    form_error($form, t('you must pick a numeric value in miles for proximity'));
+  }
 }
 
 /**
@@ -98,10 +123,14 @@ function zipcode_search_page_form_validate($form, &$form_state) {
 function zipcode_search_page_form_submit($form, &$form_state) {
   $form_state['rebuild'] = TRUE;
   $_SESSION['myvalue'] = $form_state['values']['your_zipcode'];
+  $_SESSION['proximity'] = $form_state['values']['proximity'];
   $form_state['storage']['myvalue'] = $form_state['values']['your_zipcode'];
 }
 
-function zipcode_get_results ($zipcode) {
+/**
+ * Implements getting which zipcodes are within a given proximity.
+ */
+function zipcode_get_results ($zipcode, $proximity) {
   mysql_connect('localhost:8889', 'root', 'root');
   mysql_select_db('matching7');
   $count = 1;
@@ -109,39 +138,42 @@ function zipcode_get_results ($zipcode) {
   $framingham = new ZipCode($thezip);
   $content = "";
   $thezips = array();
-  foreach ($framingham->getZipsInRange(0, 5) as $miles => $zip) {
+  foreach ($framingham->getZipsInRange(0, $proximity) as $miles => $zip) {
     $miles = round($miles, 1);
-    $zip_results = "Zip code <strong>$zip </strong> is <strong>$miles</strong> miles away from "
-    . " <strong>$framingham</strong><br/>";
-    $content .= $zip_results;
+    // $zip_results = "Zip code <strong>$zip </strong> is <strong>
+    // $miles</strong> miles away from " " <strong>$framingham</strong><br/>";
+    // $content .= $zip_results;
     // $thezips[] = "'" . $zip . "'";
     $thezips[] = $zip;
+    $miles_away[] = $miles;
   }
-  // $thezips[] = "'" . $zipcode . "'";
+  // Add the zipcode they actually searched for as well.
   $thezips[] = $zipcode;
+  // The zipcode they searched for is 0 miles away from itself.
+  $miles_away[] = 0;
   $people_sql = 'SELECT DISTINCT u.name as name, z.field_zipcode_value as zip from {users} u,
         {field_data_field_zipcode} z where z.entity_id = u.uid and z.field_zipcode_value IN (:zips)';
   $people_results = db_query($people_sql, array(':zips' => $thezips));
   $thepeople = array();
   foreach ($people_results as $row) {
-    // drupal_set_message('<pre>' . print_r($row, TRUE) . '</pre>');
     $thepeople[$count]['name'] = $row->name;
     $thepeople[$count]['zip'] = $row->zip;
     $count = $count + 1;
   }
-  // drupal_set_message('<pre>' . print_r($thepeople, TRUE) . '</pre>');
   $content .= '<table id="datatable1">
   <thead>
         <tr>
-            <th>Column 1</th>
-            <th>Column 2</th>
+            <th>Name</th>
+            <th>Zipcode</th>
+            <th>Distance</th>
         </tr>
     </thead><tbody>';
   foreach ($thepeople as $person) {
-    $content .= '<tr><td>' . $person['name'] . '</td><td>' . $person['zip'] . '</td></tr>';
+    $search_value = $person['zip'];
+    $keys = array_keys($thezips, $search_value);
+    $content .= '<tr><td>' . $person['name'] . '</td><td>' . $person['zip'] . '</td><td>' . $miles_away[$keys[0]] . ' miles away</td></tr>';
   }
   $content .= '</tbody></table>';
-  // drupal_set_message('<pre>' . print_r($thepeople, TRUE) . '</pre>');
   if ($path = libraries_get_path('DataTables')) {
     drupal_add_js(drupal_get_path('module', 'zipcode_search') . '/zipcode_search.js');
     drupal_add_js($path . '/media/js/jquery.dataTables.min.js');
