@@ -151,13 +151,16 @@ function zipcode_get_results ($zipcode, $proximity) {
   $thezips[] = $zipcode;
   // The zipcode they searched for is 0 miles away from itself.
   $miles_away[] = 0;
-  $people_sql = 'SELECT DISTINCT u.name as name, z.field_zipcode_value as zip from {users} u,
-        {field_data_field_zipcode} z where z.entity_id = u.uid and z.field_zipcode_value IN (:zips)';
+  $people_sql = 'SELECT DISTINCT u.uid, u.name as name, z.field_zipcode_value as zip, group_concat(h.field_hobbies_value) as hobbies from {users} u,
+        {field_data_field_zipcode} z, {field_data_field_hobbies} h where z.entity_id = u.uid and h.entity_id = u.uid
+        and z.field_zipcode_value IN (:zips) group by name';
   $people_results = db_query($people_sql, array(':zips' => $thezips));
   $thepeople = array();
   foreach ($people_results as $row) {
     $thepeople[$count]['name'] = $row->name;
     $thepeople[$count]['zip'] = $row->zip;
+    $thepeople[$count]['hobbies'] = $row->hobbies;
+    $thepeople[$count]['uid'] = $row->uid;
     $count = $count + 1;
   }
   $content .= '<table id="datatable1">
@@ -165,13 +168,15 @@ function zipcode_get_results ($zipcode, $proximity) {
         <tr>
             <th>Name</th>
             <th>Zipcode</th>
+            <th>Hobbies</th>
             <th>Distance</th>
         </tr>
     </thead><tbody>';
   foreach ($thepeople as $person) {
     $search_value = $person['zip'];
     $keys = array_keys($thezips, $search_value);
-    $content .= '<tr><td>' . $person['name'] . '</td><td>' . $person['zip'] . '</td><td>' . $miles_away[$keys[0]] . ' miles away</td></tr>';
+    $content .= '<tr><td>' . l(t($person['name']), 'user/' . $person['uid']) . '</td><td>' . $person['zip'] . '</td><td>' .
+    $person['hobbies'] . '</td><td>' . $miles_away[$keys[0]] . ' miles away</td></tr>';
   }
   $content .= '</tbody></table>';
   if ($path = libraries_get_path('DataTables')) {

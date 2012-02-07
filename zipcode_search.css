@@ -1,3 +1,11 @@
 #datatable1 {
 	clear: both;
 }
+#branding {
+	position: relative;
+	left: 300px;
+	background-image:url('/sites/default/files/cards.jpg');
+	opacity:0.4;
+    filter:alpha(opacity=40);
+    height: 200px;
+}
