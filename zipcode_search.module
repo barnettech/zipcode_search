@@ -16,7 +16,7 @@ include 'PHP-ZipCode-Class/zipcode.php';
 function zipcode_search_menu() {
   $items = array();
   $items['zipcode-search'] = array(
-    'title' => 'Zip code search page',
+    'title' => 'Things in Common: Zip code search page (find folks to do fun stuff with)',
     'page callback'=>'drupal_get_form',
     'page arguments'=>array('zipcode_search_page_form'),
     'access arguments' => array('access content'),
@@ -166,6 +166,7 @@ function zipcode_get_results ($zipcode, $proximity) {
   $content .= '<table id="datatable1">
   <thead>
         <tr>
+            <th>Photo</th>
             <th>Name</th>
             <th>Zipcode</th>
             <th>Hobbies</th>
@@ -175,7 +176,26 @@ function zipcode_get_results ($zipcode, $proximity) {
   foreach ($thepeople as $person) {
     $search_value = $person['zip'];
     $keys = array_keys($thezips, $search_value);
-    $content .= '<tr><td>' . l(t($person['name']), 'user/' . $person['uid']) . '</td><td>' . $person['zip'] . '</td><td>' .
+    $profile = user_load($person['uid']);
+    if (isset($profile->picture->uri)) {
+      $user_pic = theme_image_style(
+        array(
+          'style_name' => 'medium',
+          'path' => $profile->picture->uri,
+          'attributes' => array(
+            'class' => 'thumb',
+            'width' => '60',
+            'height' => '60',
+          ),
+          'width' => NULL,
+          'height' => NULL,
+        )
+      );
+    }
+    else {
+      $user_pic = '';
+    }
+    $content .= '<tr><td>' . $user_pic . '</td><td>' . l(t($person['name']), 'user/' . $person['uid']) . '</td><td>' . $person['zip'] . '</td><td>' .
     $person['hobbies'] . '</td><td>' . $miles_away[$keys[0]] . ' miles away</td></tr>';
   }
   $content .= '</tbody></table>';

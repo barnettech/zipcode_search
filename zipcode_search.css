@@ -2,10 +2,11 @@
 	clear: both;
 }
 #branding {
-	position: relative;
+	/* position: relative;
 	left: 300px;
 	background-image:url('/sites/default/files/cards.jpg');
 	opacity:0.4;
     filter:alpha(opacity=40);
-    height: 200px;
+    height: 200px; */
+    width: 100% !important;
 }
