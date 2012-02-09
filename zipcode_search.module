@@ -5,7 +5,7 @@
  *
  * Module developed by James Barnett 2012 for thingsincommon website to
  * implement zipcode proxity searches to connect folks who live
- * near each other with "things in common"
+ * near each other with "activities in common"
  */
 
 include 'PHP-ZipCode-Class/zipcode.php';
@@ -16,7 +16,7 @@ include 'PHP-ZipCode-Class/zipcode.php';
 function zipcode_search_menu() {
   $items = array();
   $items['zipcode-search'] = array(
-    'title' => 'Things in Common: Zip code search page (find folks to do fun stuff with)',
+    'title' => 'Activities in Common: Zip code search page (find folks to do fun stuff with)',
     'page callback'=>'drupal_get_form',
     'page arguments'=>array('zipcode_search_page_form'),
     'access arguments' => array('access content'),

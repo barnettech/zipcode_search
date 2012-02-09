@@ -4,3 +4,4 @@ core = 7.x
 package = Barnettech Development
 files[] = zipcode_search.module
 dependencies[] = libraries
+dependencies[] = reg_with_pic
