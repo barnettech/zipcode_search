@@ -102,6 +102,13 @@ function zipcode_search_page_form($form, &$form_state) {
  * Implements hook_form_validate().
  */
 function zipcode_search_page_form_validate($form, &$form_state) {
+  global $user;
+  if (in_array('authenticated user', array_values($user->roles))) {
+    $authenticated = TRUE; 
+  }
+  else {
+    form_error($form, t('You must create an account on the left to complete your search.'));
+  }
   $thezip = $form_state['values']['your_zipcode'];
   $sql = 'SELECT zip_code from zip_code where zip_code = :yourzip';
   $results = db_query($sql, array('yourzip' => $thezip));
@@ -115,7 +122,10 @@ function zipcode_search_page_form_validate($form, &$form_state) {
   if (!is_numeric($form_state['values']['proximity'])) {
     form_error($form, t('you must pick a numeric value in miles for proximity'));
   }
-}
+  if ($form_state['values']['proximity'] > 100) {
+    form_error($form, t('You must limit your proximity search to within a 100 mile radius.'));
+  }
+ }
 
 /**
  * Implements hook_form_submit().
@@ -156,13 +166,16 @@ function zipcode_get_results ($zipcode, $proximity) {
         and z.field_zipcode_value IN (:zips) group by name';
   $people_results = db_query($people_sql, array(':zips' => $thezips));
   $thepeople = array();
+  $count = 0;
   foreach ($people_results as $row) {
+    $count = $count + 1;
     $thepeople[$count]['name'] = $row->name;
     $thepeople[$count]['zip'] = $row->zip;
     $thepeople[$count]['hobbies'] = $row->hobbies;
     $thepeople[$count]['uid'] = $row->uid;
     $count = $count + 1;
   }
+  $content .= '<h2>Thanks for being one of the early users of this site, we are growing by about 100+ members a day, check back soon to find more matches.</h2>';
   $content .= '<table id="datatable1">
   <thead>
         <tr>
