@@ -141,8 +141,8 @@ function zipcode_search_page_form_submit($form, &$form_state) {
  * Implements getting which zipcodes are within a given proximity.
  */
 function zipcode_get_results ($zipcode, $proximity) {
-  mysql_connect('localhost:8889', 'root', 'root');
-  mysql_select_db('matching7');
+  mysql_connect('localhost:8889', 'root', 'Labrad0r');
+  mysql_select_db('activities');
   $count = 1;
   $thezip = $zipcode;
   $framingham = new ZipCode($thezip);
@@ -161,8 +161,8 @@ function zipcode_get_results ($zipcode, $proximity) {
   $thezips[] = $zipcode;
   // The zipcode they searched for is 0 miles away from itself.
   $miles_away[] = 0;
-  $people_sql = 'SELECT DISTINCT u.uid, u.name as name, z.field_zipcode_value as zip, group_concat(h.field_hobbies_value) as hobbies from {users} u,
-        {field_data_field_zipcode} z, {field_data_field_hobbies} h where z.entity_id = u.uid and h.entity_id = u.uid
+  $people_sql = 'SELECT DISTINCT u.uid, u.name as name, m.field_marital_status_value as marital, z.field_zipcode_value as zip, group_concat(h.field_hobbies_value) as hobbies from {users} u,
+        {field_data_field_zipcode} z, {field_data_field_hobbies} h, {field_data_field_marital_status} m where z.entity_id = u.uid and h.entity_id = u.uid
         and z.field_zipcode_value IN (:zips) group by name';
   $people_results = db_query($people_sql, array(':zips' => $thezips));
   $thepeople = array();
@@ -172,6 +172,7 @@ function zipcode_get_results ($zipcode, $proximity) {
     $thepeople[$count]['name'] = $row->name;
     $thepeople[$count]['zip'] = $row->zip;
     $thepeople[$count]['hobbies'] = $row->hobbies;
+    $thepeople[$count]['marital'] = $row->marital;
     $thepeople[$count]['uid'] = $row->uid;
     $count = $count + 1;
   }
@@ -183,6 +184,7 @@ function zipcode_get_results ($zipcode, $proximity) {
             <th>Name</th>
             <th>Zipcode</th>
             <th>Hobbies</th>
+            <th>Marital Status</th>
             <th>Distance</th>
         </tr>
     </thead><tbody>';
@@ -208,8 +210,9 @@ function zipcode_get_results ($zipcode, $proximity) {
     else {
       $user_pic = '';
     }
+    $marital = preg_replace('/_/', ' ', $person['marital']);
     $content .= '<tr><td>' . $user_pic . '</td><td>' . l(t($person['name']), 'user/' . $person['uid']) . '</td><td>' . $person['zip'] . '</td><td>' .
-    $person['hobbies'] . '</td><td>' . $miles_away[$keys[0]] . ' miles away</td></tr>';
+    $person['hobbies'] . '</td><td>' . $marital . '</td><td>' . $miles_away[$keys[0]] . ' miles away</td></tr>';
   }
   $content .= '</tbody></table>';
   if ($path = libraries_get_path('DataTables')) {
