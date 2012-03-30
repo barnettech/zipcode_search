@@ -161,7 +161,7 @@ function zipcode_get_results ($zipcode, $proximity) {
   $thezips[] = $zipcode;
   // The zipcode they searched for is 0 miles away from itself.
   $miles_away[] = 0;
-  $people_sql = 'SELECT DISTINCT u.uid, u.name as name, m.field_marital_status_value as marital, z.field_zipcode_value as zip, group_concat(h.field_hobbies_value) as hobbies from {users} u,
+  $people_sql = 'SELECT DISTINCT u.uid, u.name as name, m.field_marital_status_value as marital, z.field_zipcode_value as zip, group_concat(distinct(h.field_hobbies_value)) as hobbies from {users} u,
         {field_data_field_zipcode} z, {field_data_field_hobbies} h, {field_data_field_marital_status} m where z.entity_id = u.uid and h.entity_id = u.uid
         and z.field_zipcode_value IN (:zips) group by name';
   $people_results = db_query($people_sql, array(':zips' => $thezips));
